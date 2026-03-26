@@ -8,24 +8,26 @@
 
 set -euo pipefail
 
-if [[ -z "${GITHUB_APP_ID:-}" ]]; then
-  echo "error: GITHUB_APP_ID is not set" >&2
+die() {
+  echo "error: $1" >&2
+  echo "return 1 2>/dev/null || false"
   exit 1
+}
+
+if [[ -z "${GITHUB_APP_ID:-}" ]]; then
+  die "GITHUB_APP_ID is not set"
 fi
 
 if [[ -z "${GITHUB_APP_INSTALLATION_ID:-}" ]]; then
-  echo "error: GITHUB_APP_INSTALLATION_ID is not set" >&2
-  exit 1
+  die "GITHUB_APP_INSTALLATION_ID is not set"
 fi
 
 if [[ -z "${GITHUB_APP_PEM_FILE:-}" ]]; then
-  echo "error: GITHUB_APP_PEM_FILE is not set" >&2
-  exit 1
+  die "GITHUB_APP_PEM_FILE is not set"
 fi
 
 if [[ ! -f "${GITHUB_APP_PEM_FILE}" ]]; then
-  echo "error: PEM file not found: ${GITHUB_APP_PEM_FILE}" >&2
-  exit 1
+  die "PEM file not found: ${GITHUB_APP_PEM_FILE}"
 fi
 
 # Function to base64 encode with URL-safe characters
@@ -57,9 +59,7 @@ RESPONSE=$(curl -s -X POST \
 INSTALL_TOKEN=$(printf '%s' "${RESPONSE}" | jq -r '.token // empty')
 
 if [[ -z "${INSTALL_TOKEN}" ]]; then
-  echo "error: failed to generate installation token" >&2
-  echo "${RESPONSE}" >&2
-  exit 1
+  die "failed to generate installation token. Response: ${RESPONSE}"
 fi
 
 # Output the export command so it can be eval'd by the caller
