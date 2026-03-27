@@ -28,13 +28,13 @@ Requires `openssl`, `curl`, and `jq` (standard on modern environments).
 The simplest approach is to use `--raw` mode, which prints only the token value. This works reliably in a single shell invocation:
 
 ```bash
-GH_TOKEN=$(bash ./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN
+GH_TOKEN=$(bash ./scripts/generate_token.sh --raw) && export GH_TOKEN
 ```
 
 You can then use `GH_TOKEN` in subsequent commands within the same shell invocation:
 
 ```bash
-GH_TOKEN=$(bash ./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN && gh api user
+GH_TOKEN=$(bash ./scripts/generate_token.sh --raw) && export GH_TOKEN && gh api user
 ```
 
 > **Note:** Using `bash` explicitly ensures the script runs even if the executable bit is not preserved in your environment.
@@ -46,7 +46,7 @@ With `GH_TOKEN` set (in the same shell), the `gh` CLI operates securely and with
 To both generate the token and authenticate `gh` in one go:
 
 ```bash
-GH_TOKEN=$(bash ./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN && echo "${GH_TOKEN}" | gh auth login --with-token && gh auth status
+GH_TOKEN=$(bash ./scripts/generate_token.sh --raw) && export GH_TOKEN && echo "${GH_TOKEN}" | gh auth login --with-token && gh auth status
 ```
 
 ### 3. Cleanup
@@ -65,12 +65,12 @@ curl -s -X DELETE \
 Without the `--raw` flag, the script outputs `export GH_TOKEN="..."` meant to be `eval`'d. This is the original behavior, preserved for backward compatibility:
 
 ```bash
-eval "$(bash ./github-app-token/scripts/generate_token.sh)" && gh api user
+eval "$(bash ./scripts/generate_token.sh)" && gh api user
 ```
 
 > [!NOTE]
 > For CI/CD environments (like GitHub Actions), use `--raw` to extract the token cleanly:
-> `echo "GH_TOKEN=$(bash ./github-app-token/scripts/generate_token.sh --raw)" >> $GITHUB_ENV`
+> `echo "GH_TOKEN=$(bash ./scripts/generate_token.sh --raw)" >> $GITHUB_ENV`
 
 ## Security Notes
 
