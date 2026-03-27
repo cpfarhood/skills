@@ -8,9 +8,17 @@
 
 set -euo pipefail
 
+# Parse flags
+RAW_MODE=false
+for arg in "$@"; do
+  case "$arg" in
+    --raw) RAW_MODE=true ;;
+    *) echo "error: unknown flag: $arg" >&2; exit 1 ;;
+  esac
+done
+
 die() {
   echo "error: $1" >&2
-  echo "return 1 2>/dev/null || false"
   exit 1
 }
 
@@ -62,5 +70,9 @@ if [[ -z "${INSTALL_TOKEN}" ]]; then
   die "failed to generate installation token. Response: ${RESPONSE}"
 fi
 
-# Output the export command so it can be eval'd by the caller
-echo "export GH_TOKEN=\"${INSTALL_TOKEN}\""
+# Output the token
+if [[ "$RAW_MODE" == true ]]; then
+  printf '%s' "${INSTALL_TOKEN}"
+else
+  echo "export GH_TOKEN=\"${INSTALL_TOKEN}\""
+fi

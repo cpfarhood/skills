@@ -19,30 +19,23 @@ The following environment variables MUST be set before invoking this skill:
 
 If any variable is missing, stop and tell the user which ones are required.
 
-Requires `openssl`, `curl`, `grep`, and `jq` (standard on modern environments).
+Requires `openssl`, `curl`, and `jq` (standard on modern environments).
 
 ## Steps
 
-### 1. Generate and Export Token
+### 1. Generate a Token
 
-Run the helper script and `eval` its output. This securely exports the short-lived GitHub installation access token as `GH_TOKEN` into your current process environment.
-
-**Important:** Because `eval` sets the variable in the current shell process, any commands that need `GH_TOKEN` must run in the **same shell invocation**. Chain all dependent commands together:
+The simplest approach is to use `--raw` mode, which prints only the token value. This works reliably in a single shell invocation:
 
 ```bash
-eval "$(/path/to/skills/github-app-token/scripts/generate_token.sh)" && gh api user
+GH_TOKEN=$(./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN
 ```
 
-Do NOT run `eval` in one command and then use `GH_TOKEN` in a separate command — the variable will not persist between separate shell invocations.
+You can then use `GH_TOKEN` in subsequent commands within the same shell invocation:
 
-> [!NOTE]
-> For a CI/CD environment (like GitHub Actions), you can extract the token to pass it between steps like so:
-> `echo "GH_TOKEN=$(/path/to/skills/github-app-token/scripts/generate_token.sh | cut -d'"' -f2)" >> $GITHUB_ENV`
-
-The script will:
-1. Automatically construct a short-lived authorization assertion using your App ID and PEM key
-2. Call the GitHub API to securely exchange that for an Installation Access Token
-3. Output the `export GH_TOKEN="..."` command to set it in your environment.
+```bash
+GH_TOKEN=$(./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN && gh api user
+```
 
 ### 2. Authenticate the gh CLI
 
@@ -51,10 +44,10 @@ With `GH_TOKEN` set (in the same shell), the `gh` CLI operates securely and with
 To both generate the token and authenticate `gh` in one go:
 
 ```bash
-eval "$(/path/to/skills/github-app-token/scripts/generate_token.sh)" && echo "${GH_TOKEN}" | gh auth login --with-token && gh auth status
+GH_TOKEN=$(./github-app-token/scripts/generate_token.sh --raw) && export GH_TOKEN && echo "${GH_TOKEN}" | gh auth login --with-token && gh auth status
 ```
 
-### 4. Cleanup
+### 3. Cleanup
 
 The installation access token expires after 1 hour. There is nothing to revoke unless you want to explicitly invalidate it early:
 
@@ -64,6 +57,18 @@ curl -s -X DELETE \
   -H "Accept: application/vnd.github+json" \
   "https://api.github.com/installation/token"
 ```
+
+## Advanced: `eval` Mode (Legacy)
+
+Without the `--raw` flag, the script outputs `export GH_TOKEN="..."` meant to be `eval`'d. This is the original behavior, preserved for backward compatibility:
+
+```bash
+eval "$(./github-app-token/scripts/generate_token.sh)" && gh api user
+```
+
+> [!NOTE]
+> For CI/CD environments (like GitHub Actions), use `--raw` to extract the token cleanly:
+> `echo "GH_TOKEN=$(./github-app-token/scripts/generate_token.sh --raw)" >> $GITHUB_ENV`
 
 ## Security Notes
 
