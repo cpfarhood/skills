@@ -14,13 +14,11 @@ Each skill follows this convention:
 
 ## Current Skills
 
-- **`github-app-token`** — Generates short-lived GitHub App installation access tokens. Requires `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, and `GITHUB_APP_PEM_FILE` env vars. Use `--raw` flag to get the token value directly (recommended for agents), or omit for legacy `eval`-based `export GH_TOKEN=...` output.
 - **`playwright-ephemeral`** — Provisions ephemeral Playwright MCP browser sessions as Kubernetes Jobs for E2E testing. Creates a Job + Service pair in a dedicated namespace, waits for readiness, and returns the MCP endpoint URL. Requires `kubectl` and appropriate RBAC.
 
 ## Key Patterns
 
 - Scripts are pure bash with no external dependencies beyond standard Unix tools (`openssl`, `curl`, `jq`, `kubectl`).
-- The `--raw` output pattern (preferred): scripts with `--raw` print only the value to stdout for easy `$(...)` capture. The legacy `eval` pattern (no flag) prints shell commands like `export VAR="value"` for backward compatibility.
 - The `die()` function prints errors to stderr and exits non-zero.
 
 ## No Build/Test/Lint System
