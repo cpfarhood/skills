@@ -17,6 +17,10 @@ metadata:
       env:
         - ANTHROPIC_API_KEY
       optionalEnv:
+        - ANTHROPIC_AUTH_TOKEN
+        - ANTHROPIC_BASE_URL
+        - ANTHROPIC_MODEL
+        - ANTHROPIC_SMALL_FAST_MODEL
         - CLAUDE_CODE_OAUTH_TOKEN
         - CLAUDE_CODE_USE_BEDROCK
         - CLAUDE_CODE_USE_VERTEX
@@ -201,9 +205,13 @@ Check that AI provider credentials are available:
 ```bash
 cd "$SHANNON_HOME"
 
-# Check for Anthropic API key (primary)
+# Check for AI provider credentials
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   echo "✅ ANTHROPIC_API_KEY is set"
+elif [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ] && [ -n "${ANTHROPIC_BASE_URL:-}" ]; then
+  echo "✅ MiniMax mode: ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL are set"
+  echo "   Base URL: $ANTHROPIC_BASE_URL"
+  echo "   Model: ${ANTHROPIC_MODEL:-MiniMax-M2.7}"
 elif [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
   echo "✅ CLAUDE_CODE_OAUTH_TOKEN is set"
 elif [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "1" ]; then
@@ -212,13 +220,14 @@ elif [ "${CLAUDE_CODE_USE_VERTEX:-}" = "1" ]; then
   echo "✅ Google Vertex AI mode enabled"
 else
   echo "❌ No AI credentials found."
-  echo "Set one of: ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or enable Bedrock/Vertex"
+  echo "Set one of: ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN+ANTHROPIC_BASE_URL (MiniMax), CLAUDE_CODE_OAUTH_TOKEN, or enable Bedrock/Vertex"
   exit 1
 fi
 ```
 
 If no credentials are found, explain the options:
 - **Direct API** (recommended): `export ANTHROPIC_API_KEY=sk-ant-...`
+- **MiniMax**: Set `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` (see MiniMax section below)
 - **OAuth**: `export CLAUDE_CODE_OAUTH_TOKEN=...`
 - **AWS Bedrock**: `export CLAUDE_CODE_USE_BEDROCK=1` + AWS credentials
 - **Google Vertex**: `export CLAUDE_CODE_USE_VERTEX=1` + service account in `./credentials/`
@@ -367,16 +376,82 @@ Automatically translate `localhost` URLs to `host.docker.internal` in the comman
 
 ---
 
+## Using MiniMax as AI Provider
+
+Shannon supports [MiniMax](https://platform.minimax.io) as an alternative AI backend via the Anthropic SDK compatibility layer. MiniMax provides the `MiniMax-M2.7` model through an Anthropic-compatible API endpoint.
+
+### MiniMax Setup
+
+1. **Get a MiniMax API key** from [platform.minimax.io](https://platform.minimax.io).
+
+2. **Configure environment variables** — either export them directly or add to `~/.claude/settings.json`:
+
+```bash
+# Export directly
+export ANTHROPIC_AUTH_TOKEN="your-minimax-api-key"
+export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"   # International
+# export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"  # China
+
+# Set model (all model slots use the same MiniMax model)
+export ANTHROPIC_MODEL="MiniMax-M2.7"
+export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.7"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="MiniMax-M2.7"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="MiniMax-M2.7"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="MiniMax-M2.7"
+```
+
+Or in `~/.claude/settings.json`:
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your-minimax-api-key",
+    "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
+    "ANTHROPIC_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  }
+}
+```
+
+3. **Clear conflicting env vars** — ensure `ANTHROPIC_API_KEY` is not set when using MiniMax, as it takes precedence:
+```bash
+unset ANTHROPIC_API_KEY
+```
+
+4. **Run Shannon normally** — the MiniMax credentials are passed through to Shannon's Docker containers via the Anthropic SDK compatibility layer:
+```bash
+cd "$SHANNON_HOME" && ./shannon start URL=http://localhost:3000 REPO=myapp
+```
+
+### MiniMax Notes
+- MiniMax uses `ANTHROPIC_AUTH_TOKEN` (not `ANTHROPIC_API_KEY`) for authentication
+- The `ANTHROPIC_BASE_URL` routes requests to MiniMax's Anthropic-compatible endpoint
+- Set `API_TIMEOUT_MS=3000000` for extended timeouts (recommended for pentesting workloads)
+- Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` to reduce non-essential API calls
+- MiniMax provides a single model (`MiniMax-M2.7`) that is used for all model slots
+
+---
+
 ## Configuration Reference
 
 ### Environment Variables
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | One of these | Direct Anthropic API key |
-| `CLAUDE_CODE_OAUTH_TOKEN` | required | Anthropic OAuth token |
+| `ANTHROPIC_AUTH_TOKEN` | required | MiniMax (or compatible) auth token |
+| `ANTHROPIC_BASE_URL` | | API base URL (for MiniMax: `https://api.minimax.io/anthropic`) |
+| `ANTHROPIC_MODEL` | | Model override (e.g., `MiniMax-M2.7`) |
+| `ANTHROPIC_SMALL_FAST_MODEL` | | Small/fast model override |
+| `CLAUDE_CODE_OAUTH_TOKEN` | | Anthropic OAuth token |
 | `CLAUDE_CODE_USE_BEDROCK` | | Set to `1` for AWS Bedrock |
 | `CLAUDE_CODE_USE_VERTEX` | | Set to `1` for Google Vertex AI |
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | Recommended | Set to `64000` |
+| `API_TIMEOUT_MS` | Optional | Request timeout in ms (MiniMax: `3000000`) |
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | Optional | Set to `1` to reduce non-essential calls |
 | `SHANNON_HOME` | Optional | Shannon install dir (default: `~/shannon`) |
 
 ### YAML Config Options

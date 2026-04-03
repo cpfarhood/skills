@@ -39,6 +39,10 @@ echo ""
 echo "API Credentials:"
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   echo "✅ ANTHROPIC_API_KEY is set"
+elif [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ] && [ -n "${ANTHROPIC_BASE_URL:-}" ]; then
+  echo "✅ MiniMax mode: ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL are set"
+  echo "   Base URL: $ANTHROPIC_BASE_URL"
+  echo "   Model: ${ANTHROPIC_MODEL:-MiniMax-M2.7}"
 elif [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
   echo "✅ CLAUDE_CODE_OAUTH_TOKEN is set"
 elif [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "1" ]; then
@@ -48,6 +52,7 @@ elif [ "${CLAUDE_CODE_USE_VERTEX:-}" = "1" ]; then
 else
   echo "⚠️  No AI credentials detected. Set one of:"
   echo "   export ANTHROPIC_API_KEY=sk-ant-..."
+  echo "   export ANTHROPIC_AUTH_TOKEN=... + export ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic  (MiniMax)"
   echo "   export CLAUDE_CODE_OAUTH_TOKEN=..."
   echo "   export CLAUDE_CODE_USE_BEDROCK=1"
   echo "   export CLAUDE_CODE_USE_VERTEX=1"
