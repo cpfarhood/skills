@@ -23,4 +23,6 @@ bash github-app-token/scripts/generate-token.sh
 
 The script validates env vars, generates a JWT, exchanges it for an installation token, writes the token to `$AGENT_HOME/.gh-token`, and runs `gh auth login`. On success it prints a confirmation line. On failure it exits non-zero with a descriptive error.
 
+The script sets and exports `GH_CONFIG_DIR=$AGENT_HOME/.config/gh` so each agent's `gh` state is isolated from every other agent on the same host. After sourcing or calling the script, subsequent `gh` commands in the same shell session will automatically use that isolated config. If you spawn a subprocess, export `GH_CONFIG_DIR` before calling `gh`.
+
 Requires `openssl`, `curl`, `jq`, and `gh`.

@@ -41,7 +41,12 @@ GH_TOKEN_FILE="${GH_TOKEN_FILE:-$(mktemp)}"
 printf '%s' "$TOKEN" > "$GH_TOKEN_FILE"
 chmod 600 "$GH_TOKEN_FILE"
 
-# --- Authenticate gh CLI ---
+# --- Authenticate gh CLI with per-agent config isolation ---
+# Each agent gets its own GH_CONFIG_DIR so tokens never bleed across agents.
+export GH_CONFIG_DIR="${AGENT_HOME:+${AGENT_HOME}/.config/gh}"
+GH_CONFIG_DIR="${GH_CONFIG_DIR:-$(mktemp -d)}"
+mkdir -p "$GH_CONFIG_DIR"
+
 gh auth login --with-token < "$GH_TOKEN_FILE"
 
-echo "Authenticated. Token written to $GH_TOKEN_FILE (expires in 1 hour)."
+echo "Authenticated. Token written to $GH_TOKEN_FILE (expires in 1 hour). GH_CONFIG_DIR=$GH_CONFIG_DIR"
