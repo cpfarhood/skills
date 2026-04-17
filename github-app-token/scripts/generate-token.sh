@@ -49,9 +49,20 @@ RESPONSE=$(curl -sf -X POST \
 TOKEN=$(echo "$RESPONSE" | jq -r '.token // empty')
 [[ -z "$TOKEN" ]] && die "No token in GitHub response: $RESPONSE"
 
-# --- Write token to file ---
-GH_TOKEN_FILE="${AGENT_HOME:+${AGENT_HOME}/.gh-token}"
-GH_TOKEN_FILE="${GH_TOKEN_FILE:-$(mktemp)}"
+# --- Resolve token file location ---
+# Prefer GH_CONFIG_DIR (so the token lives alongside the per-agent gh config),
+# fall back to AGENT_HOME, fail loudly if neither is set rather than silently
+# writing to /tmp and leaking the token.
+if [[ -n "${GH_CONFIG_DIR:-}" ]]; then
+  GH_TOKEN_DIR="$GH_CONFIG_DIR"
+elif [[ -n "${AGENT_HOME:-}" ]]; then
+  GH_TOKEN_DIR="$AGENT_HOME"
+else
+  die "Neither GH_CONFIG_DIR nor AGENT_HOME is set — refusing to write the token to a default location"
+fi
+
+mkdir -p "$GH_TOKEN_DIR"
+GH_TOKEN_FILE="$GH_TOKEN_DIR/.gh-token"
 
 printf '%s' "$TOKEN" > "$GH_TOKEN_FILE"
 chmod 600 "$GH_TOKEN_FILE"

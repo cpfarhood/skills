@@ -9,19 +9,21 @@ This is a **Claude Code skills repository**. Skills are reusable tools that exte
 ## Skill Structure
 
 Each skill follows this convention:
-- **`<skill-name>/SKILL.md`** — Required. Contains YAML frontmatter (`name`, `description`) and usage documentation. This is the entry point Claude Code reads when invoking the skill.
-- **`<skill-name>/scripts/`** — Implementation scripts (bash). Scripts use `set -euo pipefail` and the `die()` pattern for error handling.
+- **`<skill-name>/SKILL.md`** — Required. YAML frontmatter (`name`, `description`, …) MUST start on line 1. This is the entry point Claude Code reads when invoking the skill.
+- **`<skill-name>/CLAUDE.md`** — Optional. Maintainer / implementation notes kept out of the user-facing SKILL.md to reduce per-invocation token cost.
+- **`<skill-name>/scripts/`** — Optional. Implementation scripts (typically bash). Scripts use `set -euo pipefail` and the `die()` pattern for error handling. Invoke scripts via `bash scripts/<name>.sh` so they work even when the executable bit did not survive deployment — but also `chmod +x` them on commit.
+- **`<skill-name>/references/`** — Optional. Supporting files such as YAML templates or long-form reference documentation.
 
 ## Current Skills
 
-- **`github-app-token`** — Documents how to generate short-lived GitHub App installation access tokens. Requires `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, and `GITHUB_APP_PEM_FILE` env vars. Inline commands only — no bundled scripts.
-- **`playwright-ephemeral`** — Provisions ephemeral Playwright MCP browser sessions as Kubernetes Jobs for E2E testing. Creates a Job + Service pair in a dedicated namespace, waits for readiness, and returns the MCP endpoint URL. Requires `kubectl` and appropriate RBAC.
-- **`shannon`** — Autonomous AI pentester for web apps and APIs. Wraps the Docker-based Shannon pentester as a `/shannon` slash command. Requires `docker`, `git`, and an AI API key (`ANTHROPIC_API_KEY` or equivalent).
+- **`github-app-token`** — Generates a short-lived GitHub App installation access token, writes it to `.gh-token` under `$GH_CONFIG_DIR` (preferred) or `$AGENT_HOME` (fallback), and authenticates the `gh` CLI. Requires `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, and one of `GITHUB_APP_PEM` (inline PEM) or `GITHUB_APP_PEM_FILE` (path). Depends on `openssl`, `curl`, `jq`, `gh`.
+- **`minimax-image-generation`** — Generates images from MiniMax's `image-01` model via `/v1/image_generation`. Requires `MINIMAX_API_KEY`; `MINIMAX_API_BASE_URL` is optional. Depends on `curl`, `jq`, `base64`.
 
 ## Key Patterns
 
-- Scripts are pure bash with no external dependencies beyond standard Unix tools (`openssl`, `curl`, `jq`, `kubectl`, `docker`).
-- The `die()` function prints errors to stderr and exits non-zero.
+- Standard Unix tools only (`openssl`, `curl`, `jq`, `base64`). Any skill-specific runtime requirement (e.g. `gh`) is declared in that skill's `SKILL.md`.
+- `die()` prints errors to stderr and exits non-zero.
+- Scripts validate required env vars up front and fail loudly rather than defaulting to `mktemp`/`/tmp` for anything secret.
 
 ## No Build/Test/Lint System
 

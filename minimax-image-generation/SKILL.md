@@ -1,16 +1,3 @@
-# MiniMax Image Generation Skill
-
-Claude Code skill for generating images via the MiniMax API.
-Wraps the MiniMax `/v1/image_generation` endpoint as a `/minimax-image-generation` slash command.
-
-## Structure
-- `SKILL.md` — skill definition + usage documentation
-- `CLAUDE.md` — implementation notes
-
-## Rules
-- Set `MINIMAX_API_KEY` env var before use
-- Images are written to disk as `output-0.jpeg`, `output-1.jpeg`, etc.
-
 ---
 name: minimax-image-generation
 version: "1.0.0"
@@ -48,57 +35,31 @@ metadata:
 
 ```bash
 export MINIMAX_API_KEY="your-minimax-api-key"
-/minimax-image-generation "a cat wearing a spacesuit, cinematic photography"
+bash minimax-image-generation/scripts/generate.sh "a cat wearing a spacesuit, cinematic photography"
 ```
 
----
+Always invoke the script via `bash scripts/generate.sh …` (or `bash minimax-image-generation/scripts/generate.sh …` when running from the repo root). Do **not** rely on the executable bit — invoking through `bash` is the supported entry point, and works even when the file permissions were not preserved during deployment.
 
 ## Parse User Intent
 
 Extract from the user's input:
 
-1. **PROMPT**: The image description (required)
-2. **ASPECT_RATIO**: `16:9` (default), `1:1`, `9:16`, `4:3`, `3:4`
+1. **PROMPT**: The image description (required, positional argument)
+2. **ASPECT_RATIO**: `16:9` (default), `1:1`, `9:16`, `4:3`, `3:4` — via `--aspect-ratio=<ratio>`
+3. **COUNT**: number of images to generate (default `1`) — via `--count=<N>`
+4. **OUTPUT_PREFIX**: filename stem (default `output`) — via `--output=<stem>`
 
----
-
-## API Call Example
+## Script Usage
 
 ```bash
-# Verify credentials
-if [ -z "${MINIMAX_API_KEY:-}" ]; then
-  echo "ERROR: MINIMAX_API_KEY is not set."
-  exit 1
-fi
-
-API_BASE_URL="${MINIMAX_API_BASE_URL:-https://api.minimax.io}"
-PROMPT="<your prompt here>"
-ASPECT_RATIO="16:9"
-
-# Call the API
-response=$(curl -s -X POST "${API_BASE_URL}/v1/image_generation" \
-  -H "Authorization: Bearer ${MINIMAX_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"model\": \"image-01\",
-    \"prompt\": \"${PROMPT}\",
-    \"aspect_ratio\": \"${ASPECT_RATIO}\",
-    \"response_format\": \"base64\"
-  }")
-
-# Decode and save
-images=$(echo "$response" | jq -r '.data.image_base64[]')
-idx=0
-for image_b64 in $images; do
-  echo "$image_b64" | base64 -d > "output-${idx}.jpeg"
-  echo "Saved: output-${idx}.jpeg"
-  idx=$((idx + 1))
-done
+bash minimax-image-generation/scripts/generate.sh \
+  "a sunset over the ocean, cinematic" \
+  --aspect-ratio=16:9 \
+  --count=1 \
+  --output=sunset
 ```
 
-**Replace `<your prompt here>` with the user's image description.**
-
----
+The script writes `<output>-0.jpeg`, `<output>-1.jpeg`, … to the current working directory. On failure it exits non-zero with a descriptive error.
 
 ## Aspect Ratio Guide
 
@@ -110,27 +71,12 @@ done
 | `4:3` | Standard — presentations, blog images |
 | `3:4` | Portrait standard — posters, portraits |
 
----
-
-## Configuration Reference
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MINIMAX_API_KEY` | Yes | Your MiniMax API key |
 | `MINIMAX_API_BASE_URL` | No | API base URL (default: `https://api.minimax.io`) |
-
-### API Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `model` | string | `image-01` | Model to use |
-| `prompt` | string | required | Image description |
-| `aspect_ratio` | string | `16:9` | Image aspect ratio |
-| `response_format` | string | `base64` | Output format |
-
----
 
 ## Example Output
 

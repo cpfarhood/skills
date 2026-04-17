@@ -24,6 +24,6 @@ Generate a short-lived GitHub App installation token and authenticate `gh`.
 bash github-app-token/scripts/generate-token.sh
 ```
 
-The script validates env vars, generates a JWT, exchanges it for an installation token, writes the token to `$AGENT_HOME/.gh-token`, and runs `gh auth login`. On success it prints a confirmation line. On failure it exits non-zero with a descriptive error.
+The script validates env vars, generates a JWT, exchanges it for an installation token, writes the token to `.gh-token` inside `$GH_CONFIG_DIR` (preferred) or `$AGENT_HOME` (fallback), and runs `gh auth login`. If neither `GH_CONFIG_DIR` nor `AGENT_HOME` is set the script exits non-zero rather than silently writing the token to a default location. On success it prints a confirmation line. On failure it exits non-zero with a descriptive error.
 
 Requires `openssl`, `curl`, `jq`, and `gh`.
