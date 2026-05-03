@@ -50,32 +50,24 @@ TOKEN=$(echo "$RESPONSE" | jq -r '.token // empty')
 [[ -z "$TOKEN" ]] && die "No token in GitHub response: $RESPONSE"
 
 # --- Resolve token file location ---
-# Use GH_CONFIG_DIR if set (validated and expanded); otherwise let gh use its default.
+# Prefer GH_CONFIG_DIR (so the token lives alongside the per-agent gh config),
+# fall back to AGENT_HOME, fail loudly if neither is set rather than silently
+# writing to /tmp and leaking the token.
 if [[ -n "${GH_CONFIG_DIR:-}" ]]; then
-  # Expand any unexpanded $VAR references (e.g. $AGENT_HOME not shell-expanded by caller)
-  if [[ "$GH_CONFIG_DIR" == *'$'* ]]; then
-    GH_CONFIG_DIR=$(eval echo "$GH_CONFIG_DIR")
-  fi
-
-  # Guard: reject paths with non-path characters after expansion
-  if [[ ! "$GH_CONFIG_DIR" =~ ^[a-zA-Z0-9/_.:-]+$ ]]; then
-    die "GH_CONFIG_DIR contains non-path characters (possible injection attempt): $GH_CONFIG_DIR"
-  fi
-
   GH_TOKEN_DIR="$GH_CONFIG_DIR"
+elif [[ -n "${AGENT_HOME:-}" ]]; then
+  GH_TOKEN_DIR="$AGENT_HOME"
 else
-  GH_TOKEN_DIR=""
+  die "Neither GH_CONFIG_DIR nor AGENT_HOME is set — refusing to write the token to a default location"
 fi
+
+mkdir -p "$GH_TOKEN_DIR"
+GH_TOKEN_FILE="$GH_TOKEN_DIR/.gh-token"
+
+printf '%s' "$TOKEN" > "$GH_TOKEN_FILE"
+chmod 600 "$GH_TOKEN_FILE"
 
 # --- Authenticate gh CLI ---
-if [[ -n "$GH_TOKEN_DIR" ]]; then
-  GH_TOKEN_FILE="$GH_TOKEN_DIR/.gh-token"
-  mkdir -p "$GH_TOKEN_DIR"
-  printf '%s' "$TOKEN" > "$GH_TOKEN_FILE"
-  chmod 600 "$GH_TOKEN_FILE"
-  gh auth login --with-token < "$GH_TOKEN_FILE"
-  echo "Authenticated. Token written to $GH_TOKEN_FILE (expires in 1 hour)."
-else
-  gh auth login --with-token <<<"$TOKEN"
-  echo "Authenticated. Token stored in gh default config directory (expires in 1 hour)."
-fi
+gh auth login --with-token < "$GH_TOKEN_FILE"
+
+echo "Authenticated. Token written to $GH_TOKEN_FILE (expires in 1 hour)."
